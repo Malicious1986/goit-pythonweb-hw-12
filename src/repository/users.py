@@ -121,3 +121,24 @@ class UserRepository:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+
+    async def update_password_by_email(
+        self, email: str, hashed_password: str
+    ) -> User | None:
+        """Update a user's hashed password by email.
+
+        Args:
+            email (str): Email identifying the user.
+            hashed_password (str): New hashed password.
+
+        Returns:
+            User | None: Updated user instance if found, otherwise ``None``.
+        """
+
+        user = await self.get_user_by_email(email)
+        if user is None:
+            return None
+        user.hashed_password = hashed_password
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user

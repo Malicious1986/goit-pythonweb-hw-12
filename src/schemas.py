@@ -52,3 +52,12 @@ class Token(BaseModel):
 
 class RequestEmail(BaseModel):
     email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordConfirm(BaseModel):
+    token: str
+    new_password: str

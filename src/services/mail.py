@@ -6,6 +6,7 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from fastapi_mail.errors import ConnectionErrors
 
 from src.services.auth import create_email_token
+from src.services.auth import create_password_reset_token
 from src.conf.config import config
 
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
@@ -53,5 +54,30 @@ async def send_email(email: str, username: str, host: str):
 
         fm = FastMail(conf)
         await fm.send_message(message, template_name="verify_email.html")
+    except ConnectionErrors as err:
+        print(err)
+
+
+async def send_password_reset_email(email: str, username: str, host: str):
+    """Send a password reset email with a short-lived token.
+
+    This function does not leak whether the user exists; callers should
+    always return a generic message to the client.
+    """
+    try:
+        token = create_password_reset_token({"sub": email})
+        message = MessageSchema(
+            subject="Password reset request",
+            recipients=[email],
+            template_body={
+                "host": host,
+                "username": username,
+                "token": token,
+            },
+            subtype=MessageType.html,
+        )
+
+        fm = FastMail(conf)
+        await fm.send_message(message, template_name="password_reset.html")
     except ConnectionErrors as err:
         print(err)

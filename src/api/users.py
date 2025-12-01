@@ -15,6 +15,9 @@ from src.services.auth import create_access_token, Hash, get_current_user
 from src.cache.user_cache import set_user_cache, delete_user_cache
 from src.schemas import User as UserSchema
 from src.services.mail import send_email
+from src.services.mail import send_password_reset_email
+from src.services.auth import get_email_from_password_reset_token
+from src.schemas import ResetPasswordRequest, ResetPasswordConfirm
 from src.services.upload_file import UploadFileService
 from src.services.users import UserService
 from src.database.db import get_db
@@ -206,6 +209,59 @@ async def request_email(
             send_email, user.email, user.username, str(request.base_url)
         )
     return {"message": "Please check your email to confirm"}
+
+
+@router.post("/request_password_reset")
+async def request_password_reset(
+    body: ResetPasswordRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Request a password-reset email.
+
+    For security, this endpoint always returns a generic message so it does
+    not reveal whether the email is registered.
+    """
+
+    user_service = UserService(db)
+    user = await user_service.get_user_by_email(body.email)
+
+    if user:
+        client = getattr(request, "client", None)
+        host = client.host if client is not None else str(request.base_url)
+        background_tasks.add_task(
+            send_password_reset_email, user.email, user.username, host
+        )
+    return {"message": "If an account with that email exists, check your inbox"}
+
+
+@router.post("/reset_password")
+async def reset_password(
+    body: ResetPasswordConfirm, db: AsyncSession = Depends(get_db)
+):
+    """Reset a user's password using a valid reset token.
+
+    The token encodes the target email; if valid, the user's password is updated.
+    """
+
+    email = await get_email_from_password_reset_token(body.token)
+    user_service = UserService(db)
+    user = await user_service.get_user_by_email(email)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token or user"
+        )
+
+    hashed = Hash().get_password_hash(body.new_password)
+    updated_user = await user_service.update_password(email, hashed)
+
+    try:
+        await delete_user_cache(user.username)
+    except Exception:
+        pass
+
+    return {"message": "Password has been reset successfully"}
 
 
 @router.patch("/avatar", response_model=User)
