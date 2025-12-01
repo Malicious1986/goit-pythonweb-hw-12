@@ -20,6 +20,12 @@ from src.services.auth import get_email_from_token
 from src.conf.limiter import limiter
 from src.conf.config import config
 
+"""Authentication and user-related API endpoints.
+
+Endpoints include registration, login, retrieval of the authenticated user,
+email confirmation flows, and avatar upload.
+"""
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -30,6 +36,22 @@ async def register_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    """Register a new user and send an email verification task.
+
+    Performs uniqueness checks on username and email, hashes the password,
+    creates the user, and enqueues an email verification task in the
+    background tasks.
+
+    Args:
+        user_data (UserCreate): Incoming user creation payload.
+        background_tasks (BackgroundTasks): FastAPI background task runner.
+        request (Request): FastAPI request object (used to determine host).
+        db (AsyncSession): Database session (injected).
+
+    Returns:
+        User: The newly created user.
+    """
+
     user_service = UserService(db)
 
     email_user = await user_service.get_user_by_email(user_data.email)
@@ -57,6 +79,18 @@ async def register_user(
 async def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
+    """Authenticate a user and return an access token.
+
+    Validates credentials and confirmed email status before issuing a JWT.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): Form data containing username/password.
+        db (AsyncSession): Database session (injected).
+
+    Returns:
+        dict: Token response with ``access_token`` and ``token_type``.
+    """
+
     user_service = UserService(db)
     user = await user_service.get_user_by_username(form_data.username)
     if not user or not Hash().verify_password(form_data.password, user.hashed_password):
@@ -79,11 +113,26 @@ async def login_user(
 @limiter.limit("5/minute")
 @limiter.limit("1/second")
 async def me(request: Request, user: User = Depends(get_current_user)):
+    """Return the currently authenticated user.
+
+    Rate-limited endpoint that returns the authenticated user's data.
+    """
+
     return user
 
 
 @router.get("/confirmed_email/{token}")
 async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
+    """Verify an email confirmation token and mark user's email as confirmed.
+
+    Args:
+        token (str): Email verification token.
+        db (AsyncSession): Database session (injected).
+
+    Returns:
+        dict: Message indicating verification status.
+    """
+
     email = await get_email_from_token(token)
     user_service = UserService(db)
     user = await user_service.get_user_by_email(email)
@@ -104,6 +153,20 @@ async def request_email(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    """Request a new verification email for the provided address.
+
+    If the user exists and is unconfirmed, a verification email is enqueued.
+
+    Args:
+        body (RequestEmail): Payload containing the email address.
+        background_tasks (BackgroundTasks): Background task runner.
+        request (Request): FastAPI request (used to build base URL).
+        db (AsyncSession): Database session (injected).
+
+    Returns:
+        dict: Message instructing the caller to check their email.
+    """
+
     user_service = UserService(db)
     user = await user_service.get_user_by_email(body.email)
 
@@ -122,6 +185,17 @@ async def update_avatar_user(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Upload and set a new avatar image for the authenticated user.
+
+    Args:
+        file (UploadFile): Uploaded file object.
+        user (User): Authenticated user (injected).
+        db (AsyncSession): Database session (injected).
+
+    Returns:
+        User: Updated user model with new avatar URL.
+    """
+
     avatar_url = UploadFileService(
         config.CLOUDINARY_NAME, config.CLOUDINARY_API_KEY, config.CLOUDINARY_API_SECRET
     ).upload_file(file, user.username)

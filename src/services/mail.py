@@ -26,6 +26,18 @@ conf = ConnectionConfig(
 
 
 async def send_email(email: str, username: str, host: str):
+    """Send a verification email to a user.
+
+    Args:
+        email (str): Recipient email address.
+        username (str): Recipient username for the email template.
+        host (str): Hostname used to build verification links.
+
+    Notes:
+        This function uses the global ``conf`` :class:`ConnectionConfig` and
+        renders the ``verify_email.html`` template.
+    """
+
     try:
         token_verification = create_email_token({"sub": email})
         message = MessageSchema(

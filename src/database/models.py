@@ -7,6 +7,13 @@ class Base(DeclarativeBase):
     pass
 
 
+# Replace the default SQLAlchemy MetaData docstring which may contain
+# cross-reference labels that Sphinx cannot resolve in this project's docs.
+# Overriding it with a simple description prevents warnings like:
+# "undefined label: 'orm_declarative_metadata'" during Sphinx build.
+Base.metadata.__doc__ = "MetaData container for declarative models."
+
+
 class Contact(Base):
     __tablename__ = "contacts"
     __table_args__ = (

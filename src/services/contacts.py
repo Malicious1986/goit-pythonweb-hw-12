@@ -8,6 +8,16 @@ from sqlalchemy.exc import IntegrityError
 
 
 def _handle_integrity_error(e: IntegrityError):
+    """Map SQLAlchemy IntegrityError to a FastAPI HTTPException.
+
+    Args:
+        e (IntegrityError): The raised SQLAlchemy IntegrityError.
+
+    Raises:
+        HTTPException: 409 if unique constraint for email/phone is violated,
+            otherwise 400 for general integrity errors.
+    """
+
     if "uix_email_phone_userid" in str(e.orig):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -21,7 +31,19 @@ def _handle_integrity_error(e: IntegrityError):
 
 
 class ContactsService:
+    """Service layer for contact-related business logic.
+
+    The service wraps :class:`ContactsRepository` and translates DB-level
+    integrity errors into HTTP exceptions.
+    """
+
     def __init__(self, db: AsyncSession):
+        """Initialize the contacts service with a DB session.
+
+        Args:
+            db (AsyncSession): Async database session.
+        """
+
         self.contacts_repo = ContactsRepository(db)
 
     async def get_contacts(
@@ -33,6 +55,20 @@ class ContactsService:
         last_name: str | None = None,
         email: str | None = None,
     ) -> list[Contact]:
+        """Return a paginated list of user's contacts.
+
+        Args:
+            user (User): Owner to scope the query.
+            skip (int): Offset for pagination.
+            limit (int): Maximum number of results.
+            name (str | None): Optional name filter.
+            last_name (str | None): Optional last name filter.
+            email (str | None): Optional email filter.
+
+        Returns:
+            list[Contact]: Contacts matching filters.
+        """
+
         return await self.contacts_repo.get_contacts(
             skip,
             limit,
@@ -43,6 +79,16 @@ class ContactsService:
         )
 
     async def get_contact_by_id(self, contact_id: int, user: User) -> Contact | None:
+        """Fetch a contact by id scoped to ``user``.
+
+        Args:
+            contact_id (int): Contact primary key.
+            user (User): Owner used to scope the query.
+
+        Returns:
+            Contact | None: The contact if found, otherwise ``None``.
+        """
+
         return await self.contacts_repo.get_contact_by_id(contact_id, user)
 
     async def create_contact(self, body: ContactModel, user: User) -> Contact | None:
@@ -62,7 +108,27 @@ class ContactsService:
             _handle_integrity_error(e)
 
     async def remove_contact(self, contact_id: int, user: User) -> Contact | None:
+        """Remove a contact owned by ``user``.
+
+        Args:
+            contact_id (int): Contact primary key to remove.
+            user (User): Owner used to scope the deletion.
+
+        Returns:
+            Contact | None: The deleted contact if it existed, otherwise ``None``.
+        """
+
         return await self.contacts_repo.remove_contact(contact_id, user)
 
     async def get_upcoming_birthdays(self, user: User, days: int = 7) -> list[Contact]:
+        """Return contacts with upcoming birthdays for ``user`` within ``days``.
+
+        Args:
+            user (User): Owner used to scope the query.
+            days (int): Days window to check (inclusive).
+
+        Returns:
+            list[Contact]: Contacts with upcoming birthdays.
+        """
+
         return await self.contacts_repo.get_upcoming_birthdays(user, days)
