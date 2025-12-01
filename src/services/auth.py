@@ -12,6 +12,7 @@ from src.conf.config import config
 from src.services.users import UserService
 from src.cache.user_cache import get_user_cache
 from src.schemas import User as UserSchema
+from src.database.models import User, UserRole
 
 
 class Hash:
@@ -103,6 +104,7 @@ async def get_current_user(
 
     cached = await get_user_cache(username)
     if cached is not None:
+
         return UserSchema.model_validate(cached)
 
     user_service = UserService(db)
@@ -191,3 +193,12 @@ async def get_email_from_password_reset_token(token: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid or expired password reset token",
         )
+
+
+def get_current_admin_user(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    return current_user
+
+
+from src.database.models import UserRole, User

@@ -1,16 +1,18 @@
 from sqlalchemy import Date, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import mapped_column, Mapped, DeclarativeBase, relationship
 from sqlalchemy.sql.sqltypes import DateTime
+from enum import Enum
 
 
 class Base(DeclarativeBase):
     pass
 
 
-# Replace the default SQLAlchemy MetaData docstring which may contain
-# cross-reference labels that Sphinx cannot resolve in this project's docs.
-# Overriding it with a simple description prevents warnings like:
-# "undefined label: 'orm_declarative_metadata'" during Sphinx build.
+class UserRole(str, Enum):
+    USER = "user"
+    ADMIN = "admin"
+
+
 Base.metadata.__doc__ = "MetaData container for declarative models."
 
 
@@ -41,3 +43,6 @@ class User(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     avatar: Mapped[str] = mapped_column(String(255), nullable=True)
     confirmed: Mapped[bool] = mapped_column(nullable=True, default=False)
+    role: Mapped[UserRole] = mapped_column(
+        String(20), nullable=False, default=UserRole.USER
+    )

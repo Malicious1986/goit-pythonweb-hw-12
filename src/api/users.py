@@ -11,9 +11,14 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
 from src.schemas import RequestEmail, UserCreate, Token, User
-from src.services.auth import create_access_token, Hash, get_current_user
+from src.services.auth import (
+    create_access_token,
+    Hash,
+    get_current_user,
+    get_current_admin_user,
+)
 from src.cache.user_cache import set_user_cache, delete_user_cache
-from src.schemas import User as UserSchema
+from src.schemas import User
 from src.services.mail import send_email
 from src.services.mail import send_password_reset_email
 from src.services.auth import get_email_from_password_reset_token
@@ -120,6 +125,7 @@ async def login_user(
                 "email": user.email,
                 "avatar": user.avatar or "",
                 "confirmed": bool(user.confirmed),
+                "role": user.role,
             }
         )
     except Exception:
@@ -171,6 +177,7 @@ async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
                 "email": user.email,
                 "avatar": user.avatar or "",
                 "confirmed": True,
+                "role": user.role,
             }
         )
     except Exception:
@@ -267,7 +274,7 @@ async def reset_password(
 @router.patch("/avatar", response_model=User)
 async def update_avatar_user(
     file: UploadFile = File(),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload and set a new avatar image for the authenticated user.
@@ -301,6 +308,7 @@ async def update_avatar_user(
                 "email": updated_user.email,
                 "avatar": updated_user.avatar or "",
                 "confirmed": bool(updated_user.confirmed),
+                "role": updated_user.role,
             }
         )
     except Exception:

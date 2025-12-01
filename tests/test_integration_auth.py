@@ -8,12 +8,14 @@ from sqlalchemy import select
 from src.database.models import User
 from tests.conftest import TestingSessionLocal
 from src.services.auth import create_password_reset_token
+from src.database.models import UserRole
 
 
 user_data = {
     "username": "agent007",
     "email": "agent007@gmail.com",
     "password": "12345678",
+    "role": "user",
 }
 
 
@@ -384,6 +386,7 @@ async def test_register_raises_on_existing_email(monkeypatch):
         hashed_password="h",
         avatar=None,
         confirmed=False,
+        role=UserRole.USER,
     )
     mock_service.get_user_by_email = AsyncMock(return_value=existing)
     monkeypatch.setattr("src.api.users.UserService", lambda db: mock_service)
@@ -393,7 +396,9 @@ async def test_register_raises_on_existing_email(monkeypatch):
     req.base_url = "http://test/"
     db = MagicMock()
 
-    body = UserCreate(username="newuser", email=user_data["email"], password="pw")
+    body = UserCreate(
+        username="newuser", email=user_data["email"], password="pw", role=UserRole.USER
+    )
 
     with pytest.raises(HTTPException) as exc:
         await __import__("src.api.users", fromlist=["register_user"]).register_user(
@@ -415,6 +420,7 @@ async def test_register_raises_on_existing_username(monkeypatch):
         hashed_password="h",
         avatar=None,
         confirmed=False,
+        role=UserRole.USER,
     )
     mock_service.get_user_by_username = AsyncMock(return_value=existing)
     monkeypatch.setattr("src.api.users.UserService", lambda db: mock_service)
@@ -425,7 +431,10 @@ async def test_register_raises_on_existing_username(monkeypatch):
     db = MagicMock()
 
     body = UserCreate(
-        username=user_data["username"], email="new@example.com", password="pw"
+        username=user_data["username"],
+        email="new@example.com",
+        password="pw",
+        role=UserRole.USER,
     )
 
     with pytest.raises(HTTPException) as exc:

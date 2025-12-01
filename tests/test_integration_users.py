@@ -6,6 +6,8 @@ from src.services.auth import Hash
 from src.database.models import User
 from tests.conftest import test_user
 from tests.conftest import TestingSessionLocal
+from main import app
+import src.services.auth as auth_service
 
 
 @pytest.mark.asyncio
@@ -39,6 +41,7 @@ async def test_request_email_for_unconfirmed_user(client, monkeypatch):
             hashed_password=hash_password,
             confirmed=False,
             avatar="",
+            role="user",
         )
         session.add(tmp_user)
         await session.commit()
@@ -58,6 +61,15 @@ async def test_request_email_for_unconfirmed_user(client, monkeypatch):
 async def test_update_avatar_endpoint(client, get_token, monkeypatch):
     token = get_token
 
+    app.dependency_overrides[auth_service.get_current_admin_user] = lambda: User(
+        username=test_user["username"],
+        email=test_user["email"],
+        hashed_password="h",
+        confirmed=True,
+        avatar="",
+        role="admin",
+    )
+
     monkeypatch.setattr(
         "src.api.users.UploadFileService.upload_file",
         staticmethod(lambda file, username: "http://avatar.example/img.png"),
@@ -70,3 +82,5 @@ async def test_update_avatar_endpoint(client, get_token, monkeypatch):
     assert response.status_code == 200, response.text
     data = response.json()
     assert data.get("avatar") == "http://avatar.example/img.png"
+
+    app.dependency_overrides.pop(auth_service.get_current_admin_user, None)

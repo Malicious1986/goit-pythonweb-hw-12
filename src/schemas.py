@@ -2,6 +2,8 @@ from datetime import date
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 
+from src.database.models import UserRole
+
 
 class ContactModel(BaseModel):
     name: str = Field(max_length=50)
@@ -35,6 +37,7 @@ class User(BaseModel):
     email: str
     avatar: str
     confirmed: bool = False
+    role: UserRole
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +46,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
+    role: UserRole = UserRole.USER
 
 
 class Token(BaseModel):
