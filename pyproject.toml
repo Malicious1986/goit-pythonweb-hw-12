@@ -1,0 +1,29 @@
+[project]
+name = "contacts"
+version = "0.1.0"
+description = ""
+authors = [{ name = "Osadchyi Yurii", email = "malicious1986@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.12,<4.0.0"
+dependencies = [
+    "asyncpg (>=0.30.0,<0.31.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "alembic (>=1.17.1,<2.0.0)",
+    "fastapi[standard] (>=0.121.1,<0.122.0)",
+    "python-dotenv (>=1.0.0,<1.1.0)",
+    "python-jose[cryptography] (>=3.5.0,<4.0.0)",
+    "passlib[bcrypt] (>=1.7.4,<2.0.0)",
+    "bcrypt (==4.3.0)",
+    "libgravatar (>=1.0.4,<2.0.0)",
+    "fastapi-mail (>=1.5.8,<2.0.0)",
+    "certifi (>=2024.4.0,<2026.0.0)",
+    "slowapi (>=0.1.9,<0.2.0)",
+    "cloudinary (>=1.44.1,<2.0.0)",
+]
+
+[tool.poetry]
+packages = [{ include = "contacts", from = "src" }]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
