@@ -18,6 +18,8 @@ class Config:
         "DB_URL",
         "postgresql+asyncpg://postgres:Mqwertyui86@localhost:5432/contacts",
     )
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    CACHE_TTL = int(os.getenv("CACHE_TTL", 86400))
     JWT_SECRET = os.getenv("JWT_SECRET", "your_jwt_secret_key")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRATION_SECONDS = int(os.getenv("JWT_EXPIRATION_SECONDS", 3600))

@@ -34,6 +34,7 @@ class User(BaseModel):
     username: str
     email: str
     avatar: str
+    confirmed: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

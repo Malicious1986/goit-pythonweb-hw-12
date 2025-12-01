@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
 from src.schemas import RequestEmail, UserCreate, Token, User
 from src.services.auth import create_access_token, Hash, get_current_user
+from src.cache.user_cache import set_user_cache, delete_user_cache
+from src.schemas import User as UserSchema
 from src.services.mail import send_email
 from src.services.upload_file import UploadFileService
 from src.services.users import UserService
@@ -106,6 +108,20 @@ async def login_user(
         )
 
     access_token = await create_access_token(data={"sub": user.username})
+
+    try:
+        await set_user_cache(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "avatar": user.avatar or "",
+                "confirmed": bool(user.confirmed),
+            }
+        )
+    except Exception:
+
+        pass
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -143,6 +159,19 @@ async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
     if user.confirmed:
         return {"message": "Your email is already verified"}
     await user_service.confirmed_email(email)
+
+    try:
+        await set_user_cache(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "avatar": user.avatar or "",
+                "confirmed": True,
+            }
+        )
+    except Exception:
+        pass
     return {"message": "Email has been verified"}
 
 
@@ -207,5 +236,18 @@ async def update_avatar_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+
+    try:
+        await set_user_cache(
+            {
+                "id": updated_user.id,
+                "username": updated_user.username,
+                "email": updated_user.email,
+                "avatar": updated_user.avatar or "",
+                "confirmed": bool(updated_user.confirmed),
+            }
+        )
+    except Exception:
+        pass
 
     return User.model_validate(updated_user)

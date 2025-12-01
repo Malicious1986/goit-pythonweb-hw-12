@@ -10,6 +10,8 @@ from jose import JWTError, jwt
 from src.database.db import get_db
 from src.conf.config import config
 from src.services.users import UserService
+from src.cache.user_cache import get_user_cache
+from src.schemas import User as UserSchema
 
 
 class Hash:
@@ -98,6 +100,11 @@ async def get_current_user(
             raise credentials_exception
     except JWTError as e:
         raise credentials_exception
+
+    cached = await get_user_cache(username)
+    if cached is not None:
+        return UserSchema.model_validate(cached)
+
     user_service = UserService(db)
     user = await user_service.get_user_by_username(username)
     if user is None:
