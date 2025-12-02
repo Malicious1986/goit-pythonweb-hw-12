@@ -14,10 +14,7 @@ except Exception:
 
 class Config:
 
-    DB_URL = os.getenv(
-        "DB_URL",
-        "postgresql+asyncpg://postgres:Mqwertyui86@localhost:5432/contacts",
-    )
+    DB_URL = os.getenv("DB_URL")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     # Use `or` to guard against empty-string environment values (e.g. on some platforms)
     CACHE_TTL = int(os.getenv("CACHE_TTL") or 86400)
