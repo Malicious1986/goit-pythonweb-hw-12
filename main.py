@@ -25,6 +25,13 @@ app.include_router(utils.router, prefix="/api")
 app.include_router(contacts.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 
+
+@app.get("/", include_in_schema=False)
+def health_check():
+    """Simple health endpoint used by container platforms for readiness checks."""
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
 
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
