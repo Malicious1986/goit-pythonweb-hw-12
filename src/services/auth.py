@@ -204,6 +204,7 @@ async def get_current_user(
         raise credentials_exception
 
     cached = await get_user_cache(username)
+
     if cached is not None:
 
         return UserSchema.model_validate(cached)

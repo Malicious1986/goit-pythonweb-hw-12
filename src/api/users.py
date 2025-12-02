@@ -119,9 +119,8 @@ async def login_user(
 
     access_token = await create_access_token(data={"sub": user.username})
     refresh_token = await create_refresh_token(data={"sub": user.username})
-    print("REFRESH TOKEN:", refresh_token)
     user.refresh_token = refresh_token
-    await db.commit()
+
     try:
         await set_user_cache(
             {
@@ -137,6 +136,7 @@ async def login_user(
     except Exception:
 
         pass
+    await db.commit()
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,

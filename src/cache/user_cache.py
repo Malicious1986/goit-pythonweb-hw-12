@@ -9,6 +9,7 @@ async def set_user_cache(user: dict) -> None:
     """Store user dict in redis under `user:{username}` with TTL."""
     r = get_redis()
     key = f"user:{user['username']}"
+
     await r.set(key, json.dumps(user), ex=config.CACHE_TTL)
 
 

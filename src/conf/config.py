@@ -41,6 +41,9 @@ class Config:
     CLOUDINARY_NAME = "dprywbm8e"
     CLOUDINARY_API_KEY = 459371715835687
     CLOUDINARY_API_SECRET = "jF_YVIfSr6hjlHbM37WJ9x54tEs"
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 13130))
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 
 
 config = Config

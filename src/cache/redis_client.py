@@ -23,8 +23,12 @@ def get_redis() -> aioredis.Redis:
     key = id(loop)
     client = _clients.get(key)
     if client is None:
-        client = aioredis.from_url(
-            config.REDIS_URL, encoding="utf-8", decode_responses=True
+        client = aioredis.Redis(
+            host=config.REDIS_HOST,
+            port=config.REDIS_PORT,
+            decode_responses=True,
+            username="default",
+            password=config.REDIS_PASSWORD,
         )
         _clients[key] = client
     return client
