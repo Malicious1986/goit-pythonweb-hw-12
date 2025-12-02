@@ -1,4 +1,4 @@
-# goit-pythonweb-hw-10
+# goit-pythonweb-hw-12
 
 Simple FastAPI project (contacts API).
 
