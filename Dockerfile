@@ -69,7 +69,7 @@ ENV ORIGINS=${ORIGINS}
 ENV CLOUDINARY_NAME=${CLOUDINARY_NAME}
 ENV CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
 ENV CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
-ENV PORT=8080
+ENV PORT=8000
 
 WORKDIR /app
 
@@ -86,4 +86,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8080
 
 # Start the application with Uvicorn in production mode, using environment variable references
-CMD ["uvicorn", "main:app", "--log-level", "info", "--host", "0.0.0.0" , "--port", "8080"]
+CMD ["sh", "-c", "uvicorn main:app --log-level info --host 0.0.0.0 --port ${PORT}"]
