@@ -46,3 +46,4 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(
         String(20), nullable=False, default=UserRole.USER
     )
+    refresh_token: Mapped[str] = mapped_column(String(255), nullable=True)

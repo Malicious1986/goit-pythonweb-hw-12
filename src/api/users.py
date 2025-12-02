@@ -10,9 +10,11 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
-from src.schemas import RequestEmail, UserCreate, Token, User
+from src.schemas import RequestEmail, UserCreate, Token, User, TokenRefreshRequest
 from src.services.auth import (
     create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
     Hash,
     get_current_user,
     get_current_admin_user,
@@ -116,7 +118,10 @@ async def login_user(
         )
 
     access_token = await create_access_token(data={"sub": user.username})
-
+    refresh_token = await create_refresh_token(data={"sub": user.username})
+    print("REFRESH TOKEN:", refresh_token)
+    user.refresh_token = refresh_token
+    await db.commit()
     try:
         await set_user_cache(
             {
@@ -126,12 +131,51 @@ async def login_user(
                 "avatar": user.avatar or "",
                 "confirmed": bool(user.confirmed),
                 "role": user.role,
+                "refresh_token": user.refresh_token,
             }
         )
     except Exception:
 
         pass
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/refresh-token", response_model=Token)
+async def new_token(request: TokenRefreshRequest, db: AsyncSession = Depends(get_db)):
+    """Refresh access token using a valid refresh token.
+
+    Verifies the provided refresh token and returns a new access token
+    while echoing the original refresh token back to the client.
+
+    Args:
+        request (TokenRefreshRequest): Payload containing the refresh token.
+        db (AsyncSession, optional): Database session dependency provided
+            by FastAPI's dependency injection.
+
+    Returns:
+        dict: A mapping with keys ``access_token``, ``refresh_token``, and
+            ``token_type``.
+
+    Raises:
+        HTTPException: If the refresh token is invalid or expired
+            (HTTP 401 Unauthorized).
+    """
+    user = await verify_refresh_token(request.refresh_token, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+    new_access_token = await create_access_token(data={"sub": user.username})
+    return {
+        "access_token": new_access_token,
+        "refresh_token": request.refresh_token,
+        "token_type": "bearer",
+    }
 
 
 @router.get("/me", response_model=User)

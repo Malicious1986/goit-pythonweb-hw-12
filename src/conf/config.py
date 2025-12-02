@@ -23,6 +23,9 @@ class Config:
     JWT_SECRET = os.getenv("JWT_SECRET", "your_jwt_secret_key")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRATION_SECONDS = int(os.getenv("JWT_EXPIRATION_SECONDS", 3600))
+    JWT_REFRESH_EXPIRATION_SECONDS = int(
+        os.getenv("JWT_REFRESH_EXPIRATION_SECONDS", 604800)
+    )
 
     MAIL_USERNAME: EmailStr = "yurii.osadchiy@meta.ua"
     MAIL_PASSWORD: SecretStr = SecretStr("Mqwertyui86!")

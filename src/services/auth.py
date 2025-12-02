@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, UTC
-from typing import Optional
+from typing import Optional, Literal, Union
 
 from fastapi import Depends, HTTPException, status
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from jose import JWTError, jwt
 
 from src.database.db import get_db
@@ -52,27 +53,127 @@ class Hash:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-async def create_access_token(data: dict, expires_delta: Optional[int] = None):
-    """Create a JWT access token for the provided payload.
+def create_token(
+    data: dict, expires_delta: timedelta, token_type: Literal["access", "refresh"]
+):
+    """Create a signed JWT with standard timing claims and token type.
+
+    The function encodes the provided payload and adds issued-at and
+    expiration claims along with a ``token_type`` claim to distinguish
+    between access and refresh tokens.
 
     Args:
-        data (dict): Payload to encode (should include a ``sub`` claim).
-        expires_delta (Optional[int]): Expiration in seconds. When omitted the default from configuration is used.
+        data (dict): The payload to include in the token (should include
+            a ``sub`` claim for the subject).
+        expires_delta (timedelta): Lifetime of the token.
+        token_type (Literal["access", "refresh"]): One of ``access`` or
+            ``refresh`` indicating the purpose of the token.
 
     Returns:
-        str: Encoded JWT.
+        str: The encoded JWT as a string.
     """
-
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(UTC) + timedelta(seconds=expires_delta)
-    else:
-        expire = datetime.now(UTC) + timedelta(seconds=config.JWT_EXPIRATION_SECONDS)
-    to_encode.update({"exp": expire})
+    now = datetime.now(UTC)
+    expire = now + expires_delta
+    to_encode.update({"exp": expire, "iat": now, "token_type": token_type})
     encoded_jwt = jwt.encode(
         to_encode, config.JWT_SECRET, algorithm=config.JWT_ALGORITHM
     )
     return encoded_jwt
+
+
+async def create_access_token(
+    data: dict, expires_delta: Optional[Union[float, timedelta]] = None
+):
+    """Create an access JWT for short-lived authentication.
+
+    The function accepts either a :class:`timedelta` or a numeric seconds
+    value for ``expires_delta``. If none is provided, the default
+    lifetime from configuration is used.
+
+    Args:
+        data (dict): Payload to include in the token (should contain ``sub``).
+        expires_delta (Optional[Union[float, timedelta]]): Optional lifetime
+            as a :class:`timedelta` or a number of seconds.
+
+    Returns:
+        str: Encoded access token JWT.
+    """
+    if isinstance(expires_delta, timedelta):
+        access_token = create_token(data, expires_delta, "access")
+    elif expires_delta:
+        access_token = create_token(data, timedelta(seconds=expires_delta), "access")
+    else:
+        access_token = create_token(
+            data, timedelta(seconds=config.JWT_EXPIRATION_SECONDS), "access"
+        )
+    return access_token
+
+
+async def create_refresh_token(
+    data: dict, expires_delta: Optional[Union[float, timedelta]] = None
+):
+    """Create a refresh JWT used to obtain new access tokens.
+
+    Accepts the same ``expires_delta`` semantics as :func:`create_access_token`.
+    Refresh tokens are typically longer-lived and are marked with a
+    ``token_type`` claim of ``refresh``.
+
+    Args:
+        data (dict): Payload to include in the token (should contain ``sub``).
+        expires_delta (Optional[Union[float, timedelta]]): Optional lifetime
+            as a :class:`timedelta` or a number of seconds.
+
+    Returns:
+        str: Encoded refresh token JWT.
+    """
+    if isinstance(expires_delta, timedelta):
+        refresh_token = create_token(data, expires_delta, "refresh")
+    elif expires_delta:
+        refresh_token = create_token(data, timedelta(seconds=expires_delta), "refresh")
+    else:
+        refresh_token = create_token(
+            data, timedelta(seconds=config.JWT_REFRESH_EXPIRATION_SECONDS), "refresh"
+        )
+    return refresh_token
+
+
+async def verify_refresh_token(refresh_token: str, db: AsyncSession):
+    """Verify a refresh JWT and return the corresponding user.
+
+    Decode and validate the provided refresh token, ensure the token is
+    marked with a ``token_type`` of ``refresh``, then look up and return the
+    database `User` whose ``username`` matches the token ``sub`` claim and
+    whose stored ``refresh_token`` equals the provided token.
+
+    Args:
+        refresh_token (str): The encoded refresh JWT provided by the client.
+        db (AsyncSession): Asynchronous database session for querying users.
+
+    Returns:
+        Optional[User]: The matched `User` instance when the token is valid
+            and matches the stored refresh token; otherwise ``None``.
+
+    Notes:
+        JWT decoding errors are caught and the function returns ``None``
+        instead of raising an exception.
+    """
+    try:
+        payload = jwt.decode(
+            refresh_token, config.JWT_SECRET, algorithms=[config.JWT_ALGORITHM]
+        )
+        username: Optional[str] = payload.get("sub")
+        token_type: Optional[str] = payload.get("token_type")
+        if username is None or token_type != "refresh":
+            return None
+        user = await db.execute(
+            select(User).filter(
+                User.username == username, User.refresh_token == refresh_token
+            )
+        )
+        return user.scalars().first()
+    except JWTError:
+        return None
 
 
 async def get_current_user(
