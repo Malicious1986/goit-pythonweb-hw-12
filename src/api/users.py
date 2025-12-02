@@ -41,6 +41,21 @@ email confirmation flows, and avatar upload.
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def get_base_url(request: Request) -> str:
+    """Construct a base URL using upstream proxy headers when present.
+
+    Uses `X-Forwarded-Proto` and the `Host` header if available (common when
+    running behind a reverse proxy such as Koyeb). Falls back to
+    `str(request.base_url)` when headers are absent.
+    """
+    # Prefer forwarded proto (https/http) if provided by the proxy
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    # Prefer the Host header which should contain the public hostname
+    host = request.headers.get("host") or str(request.base_url)
+    scheme = forwarded_proto or request.url.scheme
+    return f"{scheme}://{host}"
+
+
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UserCreate,
@@ -81,8 +96,7 @@ async def register_user(
         )
     user_data.password = Hash().get_password_hash(user_data.password)
     new_user = await user_service.create_user(user_data)
-    client = getattr(request, "client", None)
-    host = client.host if client is not None else str(request.base_url)
+    host = get_base_url(request)
     background_tasks.add_task(send_email, new_user.email, new_user.username, host)
     return new_user
 
@@ -257,7 +271,7 @@ async def request_email(
         return {"message": "Your email is already verified"}
     if user:
         background_tasks.add_task(
-            send_email, user.email, user.username, str(request.base_url)
+            send_email, user.email, user.username, get_base_url(request)
         )
     return {"message": "Please check your email to confirm"}
 
@@ -279,8 +293,7 @@ async def request_password_reset(
     user = await user_service.get_user_by_email(body.email)
 
     if user:
-        client = getattr(request, "client", None)
-        host = client.host if client is not None else str(request.base_url)
+        host = get_base_url(request)
         background_tasks.add_task(
             send_password_reset_email, user.email, user.username, host
         )
