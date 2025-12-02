@@ -19,12 +19,13 @@ class Config:
         "postgresql+asyncpg://postgres:Mqwertyui86@localhost:5432/contacts",
     )
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    CACHE_TTL = int(os.getenv("CACHE_TTL", 86400))
+    # Use `or` to guard against empty-string environment values (e.g. on some platforms)
+    CACHE_TTL = int(os.getenv("CACHE_TTL") or 86400)
     JWT_SECRET = os.getenv("JWT_SECRET", "your_jwt_secret_key")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-    JWT_EXPIRATION_SECONDS = int(os.getenv("JWT_EXPIRATION_SECONDS", 3600))
+    JWT_EXPIRATION_SECONDS = int(os.getenv("JWT_EXPIRATION_SECONDS") or 3600)
     JWT_REFRESH_EXPIRATION_SECONDS = int(
-        os.getenv("JWT_REFRESH_EXPIRATION_SECONDS", 604800)
+        os.getenv("JWT_REFRESH_EXPIRATION_SECONDS") or 604800
     )
 
     MAIL_USERNAME: EmailStr = "yurii.osadchiy@meta.ua"
