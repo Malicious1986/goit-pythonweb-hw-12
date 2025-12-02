@@ -45,6 +45,7 @@ ARG ORIGINS
 ARG CLOUDINARY_NAME
 ARG CLOUDINARY_API_KEY
 ARG CLOUDINARY_API_SECRET
+ARG PORT
 
 # Set environment variables for DB and access token (values may be provided via build-args)
 ENV POSTGRES_DB=${POSTGRES_DB}
@@ -68,20 +69,21 @@ ENV ORIGINS=${ORIGINS}
 ENV CLOUDINARY_NAME=${CLOUDINARY_NAME}
 ENV CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
 ENV CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+ENV PORT=8080
 
 WORKDIR /app
 
 COPY ./main.py .
 COPY ./alembic.ini .
 COPY ./migrations ./migrations
-COPY /src src
+COPY ./src src
 COPY --from=builder /app/.venv .venv
 
 # Set up environment variables for production
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Expose the specified port for FastAPI
-EXPOSE $PORT
+# Expose the application port for FastAPI
+EXPOSE 8080
 
 # Start the application with Uvicorn in production mode, using environment variable references
 CMD ["uvicorn", "src.main:app", "--log-level", "info", "--host", "0.0.0.0" , "--port", "8080"]
